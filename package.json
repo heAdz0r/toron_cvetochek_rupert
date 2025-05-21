@@ -1,0 +1,14 @@
+{
+  "name": "fairytale-wiki-migration",
+  "version": "1.0.0",
+  "description": "Migration script for Fairytale Wiki",
+  "main": "migrate-to-wiki.js",
+  "scripts": {
+    "migrate": "node migrate-to-wiki.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.7",
+    "fs": "0.0.1-security",
+    "path": "^0.12.7"
+  }
+}

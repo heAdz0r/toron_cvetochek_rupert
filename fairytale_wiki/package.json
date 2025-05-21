@@ -1,0 +1,29 @@
+{
+  "name": "fairytale_wiki",
+  "version": "1.0.0",
+  "description": "Миграция сказочного мира на Wiki.js",
+  "main": "index.js",
+  "scripts": {
+    "start": "docker-compose up -d",
+    "stop": "docker-compose down",
+    "migrate": "node migration-script.js",
+    "migrate:improved": "node improved-migration.js",
+    "migrate:fix": "node improved-migration-fix.js",
+    "migrate:single": "node single-file-migration.js",
+    "test:api": "node test-api.js",
+    "check": "node check-wiki.js",
+    "logs": "docker-compose logs -f wiki"
+  },
+  "keywords": [
+    "wiki",
+    "wikijs",
+    "markdown",
+    "fairytale",
+    "migration"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.4.0"
+  }
+}

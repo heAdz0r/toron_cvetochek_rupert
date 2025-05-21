@@ -1,0 +1,311 @@
+/* Сказочная тема для Wiki.js */
+
+/* Основные цвета и шрифты */
+:root {
+  --color-primary: #9c27b0; /* Фиолетовый - цвет магии Руперта */
+  --color-secondary: #ff9800; /* Оранжевый - цвет огня Торона */
+  --color-accent: #4caf50; /* Зеленый - цвет Цветочка */
+
+  --color-bg-light: #f8f5ff; /* Светлый фон с фиолетовым оттенком */
+  --color-text-primary: #4a4a4a; /* Основной цвет текста */
+  --color-text-secondary: #6d6d6d; /* Дополнительный цвет текста */
+
+  --border-radius-base: 8px; /* Закругленные углы для элементов */
+  --box-shadow-base: 0 3px 10px rgba(156, 39, 176, 0.1); /* Мягкие тени */
+}
+
+/* Оформление для заголовков */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Nunito", "Arial Rounded", sans-serif;
+  color: var(--color-primary);
+}
+
+h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  position: relative;
+}
+
+h1::after {
+  content: "";
+  position: absolute;
+  width: 100px;
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--color-primary),
+    var(--color-secondary)
+  );
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 2px;
+}
+
+h2 {
+  font-size: 1.8rem;
+  color: var(--color-secondary);
+  border-bottom: 2px solid var(--color-secondary);
+  padding-bottom: 8px;
+  margin-top: 2rem;
+}
+
+h3 {
+  font-size: 1.5rem;
+  color: var(--color-accent);
+  margin-top: 1.5rem;
+}
+
+/* Оформление для параграфов */
+p {
+  line-height: 1.8;
+  margin-bottom: 1rem;
+}
+
+/* Оформление для ссылок */
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color 0.2s, text-decoration 0.2s;
+}
+
+a:hover {
+  text-decoration: underline;
+  color: var(--color-secondary);
+}
+
+/* Оформление для цитат */
+blockquote {
+  background-color: rgba(156, 39, 176, 0.05);
+  border-left: 4px solid var(--color-primary);
+  padding: 1rem;
+  margin: 1rem 0;
+  font-style: italic;
+  border-radius: var(--border-radius-base);
+}
+
+/* Оформление списков */
+ul,
+ol {
+  padding-left: 2rem;
+  margin-bottom: 1rem;
+}
+
+li {
+  margin-bottom: 0.5rem;
+}
+
+ul {
+  list-style-type: none;
+}
+
+ul li::before {
+  content: "✨ ";
+  color: var(--color-secondary);
+  font-weight: bold;
+  display: inline-block;
+  width: 1.5em;
+  margin-left: -1.5em;
+}
+
+/* Оформление таблиц */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  border-radius: var(--border-radius-base);
+  overflow: hidden;
+  box-shadow: var(--box-shadow-base);
+}
+
+th {
+  background-color: var(--color-primary);
+  color: white;
+  text-align: left;
+  padding: 12px;
+}
+
+td {
+  padding: 10px;
+  border-bottom: 1px solid #eaeaea;
+}
+
+tr:nth-child(even) {
+  background-color: var(--color-bg-light);
+}
+
+/* Карточки персонажей */
+.character-card {
+  border: 1px solid rgba(156, 39, 176, 0.2);
+  border-radius: var(--border-radius-base);
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  box-shadow: var(--box-shadow-base);
+  background-color: white;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.character-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(156, 39, 176, 0.2);
+}
+
+.character-card h3 {
+  margin-top: 0;
+  color: var(--color-primary);
+  border-bottom: 1px dashed var(--color-secondary);
+  padding-bottom: 8px;
+}
+
+/* Информационные и предупреждающие блоки */
+.info-box,
+.warning-box,
+.success-box {
+  padding: 1rem;
+  margin: 1.5rem 0;
+  border-radius: var(--border-radius-base);
+  border-left: 4px solid;
+}
+
+.info-box {
+  background-color: rgba(33, 150, 243, 0.1);
+  border-left-color: #2196f3;
+}
+
+.warning-box {
+  background-color: rgba(255, 152, 0, 0.1);
+  border-left-color: var(--color-secondary);
+}
+
+.success-box {
+  background-color: rgba(76, 175, 80, 0.1);
+  border-left-color: var(--color-accent);
+}
+
+/* Стилизация боковой навигации */
+.v-navigation-drawer {
+  background: linear-gradient(180deg, #f8f5ff 0%, #ffffff 100%);
+  border-right: none !important;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+}
+
+.v-list-item {
+  margin: 8px 0;
+  border-radius: var(--border-radius-base);
+}
+
+.v-list-item--active {
+  background-color: rgba(156, 39, 176, 0.1) !important;
+  color: var(--color-primary) !important;
+}
+
+/* Стилизация верхней панели */
+.v-app-bar {
+  background-color: white !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Стилизация для мобильных устройств */
+@media (max-width: 768px) {
+  h1 {
+    font-size: 2rem;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+  }
+
+  h3 {
+    font-size: 1.3rem;
+  }
+
+  .character-card {
+    padding: 1rem;
+  }
+}
+
+/* Стилизация полосы прокрутки */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-secondary);
+}
+
+/* Специальные элементы для главной страницы */
+.hero-section {
+  text-align: center;
+  padding: 3rem 0;
+  background: linear-gradient(
+    135deg,
+    rgba(156, 39, 176, 0.1) 0%,
+    rgba(255, 152, 0, 0.1) 100%
+  );
+  border-radius: var(--border-radius-base);
+  margin-bottom: 2rem;
+}
+
+.hero-title {
+  font-size: 3rem;
+  color: var(--color-primary);
+  margin-bottom: 1rem;
+}
+
+.hero-subtitle {
+  font-size: 1.5rem;
+  color: var(--color-secondary);
+  margin-bottom: 2rem;
+}
+
+/* Карточки категорий для главной страницы */
+.category-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.category-card {
+  background-color: white;
+  border-radius: var(--border-radius-base);
+  box-shadow: var(--box-shadow-base);
+  padding: 1.5rem;
+  text-align: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.category-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.category-card h3 {
+  margin-top: 0;
+  color: var(--color-primary);
+}
+
+.category-card p {
+  color: var(--color-text-secondary);
+}
+
+.category-card-icon {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  color: var(--color-secondary);
+}
