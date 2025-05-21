@@ -1,64 +1,93 @@
 #!/usr/bin/env node
 
-// Этот файл служит оберткой для MCP сервера Wiki.js, обеспечивая совместимость с Cursor
+/**
+ * Скрипт-обертка для запуска MCP сервера с конфигурацией из Cursor
+ * Автоматически читает настройки из .cursor/mcp.json
+ */
 
-import { execSync, spawn } from "child_process";
-import path from "path";
 import fs from "fs";
+import path from "path";
 import { fileURLToPath } from "url";
+import { dirname } from "path";
+import { spawn } from "child_process";
 
-// Получаем текущую директорию в ES modules
+// Получаем текущую директорию
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = dirname(__filename);
 
-// Определяем путь к скрипту start.sh
-const scriptPath = path.join(__dirname, "start.sh");
+// Загружаем конфигурацию из .cursor/mcp.json
+function loadConfig() {
+  try {
+    // Сначала пробуем локальную конфигурацию
+    const homeDir = process.env.HOME || process.env.USERPROFILE;
+    const localConfigPath = path.join(process.cwd(), ".cursor", "mcp.json");
+    const globalConfigPath = path.join(homeDir, ".cursor", "mcp.json");
 
-// Проверяем наличие скрипта
-if (!fs.existsSync(scriptPath)) {
-  console.error(`Ошибка: файл ${scriptPath} не найден`);
-  process.exit(1);
+    let config;
+
+    if (fs.existsSync(localConfigPath)) {
+      config = JSON.parse(fs.readFileSync(localConfigPath, "utf8"));
+      console.log("Используется локальная конфигурация MCP");
+    } else if (fs.existsSync(globalConfigPath)) {
+      config = JSON.parse(fs.readFileSync(globalConfigPath, "utf8"));
+      console.log("Используется глобальная конфигурация MCP");
+    } else {
+      console.warn(
+        "Конфигурация MCP не найдена, используются значения по умолчанию"
+      );
+      return null;
+    }
+
+    return config;
+  } catch (error) {
+    console.error("Ошибка при загрузке конфигурации:", error);
+    return null;
+  }
 }
 
-// Останавливаем все предыдущие инстансы сервера
-try {
-  execSync('pkill -f "node dist/server.js" || true');
-  console.log("Остановлены предыдущие инстансы сервера");
-} catch (error) {
-  // Игнорируем ошибки
+// Загружаем конфигурацию
+const config = loadConfig();
+
+// Запускаем соответствующий MCP сервер
+function startServer() {
+  // Получаем настройки для Wiki.js
+  if (config && config.mcpServers && config.mcpServers.wikijs) {
+    const wikiJsConfig = config.mcpServers.wikijs;
+
+    // Устанавливаем переменные окружения из конфигурации
+    if (wikiJsConfig.env) {
+      process.env = { ...process.env, ...wikiJsConfig.env };
+      console.log("Переменные окружения настроены из конфигурации");
+    }
+
+    // Определяем, какой транспорт использовать
+    const transport = wikiJsConfig.transport || "stdio";
+
+    if (transport === "http") {
+      // Запускаем HTTP сервер
+      const serverProc = spawn("node", ["mcp_http_server.js"], {
+        stdio: "inherit",
+        cwd: __dirname,
+      });
+
+      console.log(`MCP HTTP сервер запущен, PID: ${serverProc.pid}`);
+
+      // Обработка завершения
+      serverProc.on("close", (code) => {
+        console.log(`MCP HTTP сервер завершил работу с кодом ${code}`);
+        process.exit(code);
+      });
+    } else {
+      // Запускаем stdio сервер
+      console.log("Запуск MCP сервера в режиме stdio");
+      // Для stdio режима просто импортируем и запускаем mcp_wikijs_stdin.js
+      import("./mcp_wikijs_stdin.js");
+    }
+  } else {
+    console.error("Не удалось найти конфигурацию для Wiki.js MCP");
+    process.exit(1);
+  }
 }
 
-// Запускаем скрипт start.sh
-console.log("Запускаем MCP сервер Wiki.js...");
-
-// Устанавливаем переменные окружения
-process.env.PORT = process.env.PORT || "8000";
-process.env.WIKIJS_BASE_URL =
-  process.env.WIKIJS_BASE_URL || "http://localhost:8080";
-process.env.WIKIJS_TOKEN =
-  process.env.WIKIJS_TOKEN ||
-  "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcGkiOjEsImdycCI6MSwiaWF0IjoxNzQ3ODI3ODM4LCJleHAiOjE3NzkzODU0MzgsImF1ZCI6InVybjp3aWtpLmpzIiwiaXNzIjoidXJuOndpa2kuanMifQ.a7hDtaAK8EXWvTPJYlYHb8AFfuufJy1sIrwh-AWkRPjaYH-VqtTECLOiq_855Pc8xAu3xrmhUvGw_9L_SfuEc6iVCVBBpB-uFmXzFn7BkYHYqdkCXBtpYB56J6Wn7fQo2Bby6LA6RJ699Ti1r8dedZ4urLmYsNnoh-mbmjtZ6gBosrY2P1oQYu3V1PdZ2cX8UvEuUdKA9duq99oDVFTGIdyDO2c5aZ2jQBX2dFzqIkBh2qSes_qIN0iQEBCSpNwJ5BijbpOlQwQTbcvfjWXEcP_2-qFOM40EI9LwqhfOXyhMkQhLPNlSPEAOW3DpNhHtOU6o9z8Y-fBRlqb-b1oPdA";
-
-// Запускаем сервер напрямую из Node.js
-const serverPath = path.join(__dirname, "dist", "server.js");
-const serverProcess = spawn("node", [serverPath], {
-  stdio: "inherit",
-  env: process.env,
-});
-
-serverProcess.on("close", (code) => {
-  console.log(`MCP сервер Wiki.js завершил работу с кодом ${code}`);
-});
-
-// Обрабатываем сигналы для корректного завершения
-process.on("SIGINT", () => {
-  console.log("Получен сигнал SIGINT, завершаем работу...");
-  serverProcess.kill();
-  process.exit(0);
-});
-
-process.on("SIGTERM", () => {
-  console.log("Получен сигнал SIGTERM, завершаем работу...");
-  serverProcess.kill();
-  process.exit(0);
-});
+// Запускаем сервер
+startServer();

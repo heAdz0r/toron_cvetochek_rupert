@@ -10,6 +10,7 @@
     "demo": "ts-node src/demo.ts",
     "client": "node mcp_client.js",
     "server:stdio": "node mcp_wikijs_stdin.js",
+    "server:http": "node mcp_http_server.js",
     "http-client": "node mcp_http_client.js"
   },
   "keywords": [
