@@ -81,3 +81,146 @@ npm run migrate
 ---
 
 Надеюсь, такое описание будет понятным и полезным! Оно объясняет цель проекта, его структуру и как с ним работать. Если нужно что-то добавить или изменить, дайте знать!
+
+# WikiJS MCP
+
+Wiki.js integration for the Cursor editor using Model Context Protocol (MCP).
+
+## Overview
+
+This project provides an MCP server for integrating Wiki.js knowledge base with Cursor, allowing AI assistants to retrieve information from your Wiki.js instance. The integration supports:
+
+- Searching Wiki.js pages
+- Retrieving page content by ID
+- Listing all pages
+
+## Requirements
+
+- Node.js 18+
+- A running Wiki.js instance (v2.5+)
+- Wiki.js API access token with read permissions
+
+## Setup
+
+1. Clone this repository or download the source files.
+
+2. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+3. Configure the Wiki.js connection by creating a `.cursor/mcp.json` file in your home directory or in the project directory:
+
+   ```json
+   {
+     "mcpServers": {
+       "wikijs": {
+         "transport": "http",
+         "url": "http://localhost:3200/mcp",
+         "events": "http://localhost:3200/mcp/events",
+         "cwd": "/path/to/your/project",
+         "env": {
+           "WIKIJS_BASE_URL": "http://localhost:8080",
+           "WIKIJS_TOKEN": "your-wikijs-api-token"
+         }
+       }
+     }
+   }
+   ```
+
+   Replace:
+
+   - `/path/to/your/project` with your actual project path
+   - `http://localhost:8080` with your Wiki.js URL
+   - `your-wikijs-api-token` with your Wiki.js API token
+
+4. Start the MCP server:
+   ```bash
+   npm start
+   ```
+
+## Usage
+
+### In Cursor
+
+1. Once the MCP server is running, open Cursor.
+2. The WikiJS MCP tools should be available for the AI assistant to use.
+3. You can ask the AI to search for or retrieve information from your Wiki.js instance.
+
+### Testing
+
+Test the HTTP client:
+
+```bash
+npm test
+```
+
+Test SSE connections:
+
+```bash
+npm run test:sse
+```
+
+## Configuration Details
+
+### MCP Configuration
+
+The `.cursor/mcp.json` configuration file can be placed in:
+
+1. Project-specific: `./cursor/mcp.json` (higher precedence)
+2. User-wide: `~/.cursor/mcp.json`
+
+### Server Options
+
+You can modify the `simple_server.js` file to adjust:
+
+- Server port (default: 3200)
+- CORS settings
+- API capabilities
+
+### Wiki.js Client Configuration
+
+The WikiJS client can be configured by modifying the `wikijs_client.js` file.
+
+## Troubleshooting
+
+### Server Connection Issues
+
+If Cursor can't connect to the MCP server:
+
+1. Verify the server is running (`npm start`)
+2. Check the server logs for errors
+3. Make sure the URL in your `.cursor/mcp.json` matches the server address
+4. Test with the included client: `npm test`
+
+### Wiki.js API Issues
+
+If the server can't connect to Wiki.js:
+
+1. Verify your Wiki.js instance is running
+2. Check that your API token has proper permissions
+3. Confirm the base URL is correct and accessible
+4. Ensure you have API access enabled in Wiki.js settings
+
+## Advanced Usage
+
+### Custom URL Paths
+
+If you need to run the server on a different path or port, update:
+
+1. The `PORT` variable in `simple_server.js`
+2. The `url` and `events` fields in `.cursor/mcp.json`
+3. The `mcpUrl` in test clients
+
+### Implementing Additional Tools
+
+To add more WikiJS functionality:
+
+1. Extend the WikiJS client in `wikijs_client.js`
+2. Add new tool definitions in the `tools` array in `simple_server.js`
+3. Add the corresponding handler in the `handleCommand` function
+
+## License
+
+MIT License

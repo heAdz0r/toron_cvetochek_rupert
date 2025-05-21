@@ -1,14 +1,35 @@
 {
-  "name": "fairytale-wiki-migration",
+  "name": "wikijs-mcp",
   "version": "1.0.0",
-  "description": "Migration script for Fairytale Wiki",
-  "main": "migrate-to-wiki.js",
+  "description": "Wiki.js integration for Cursor MCP",
+  "type": "module",
+  "main": "start_server.js",
   "scripts": {
-    "migrate": "node migrate-to-wiki.js"
+    "start": "node start_server.js",
+    "test": "node mcp_client.js",
+    "test:sse": "node test_sse.js"
   },
+  "keywords": [
+    "wikijs",
+    "cursor",
+    "mcp",
+    "ai"
+  ],
+  "author": "",
+  "license": "MIT",
   "dependencies": {
-    "axios": "^1.6.7",
-    "fs": "0.0.1-security",
-    "path": "^0.12.7"
-  }
+    "node-fetch": "^3.3.2",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/heAdz0r/toron_cvetochek_rupert.git"
+  },
+  "bugs": {
+    "url": "https://github.com/heAdz0r/toron_cvetochek_rupert/issues"
+  },
+  "homepage": "https://github.com/heAdz0r/toron_cvetochek_rupert#readme"
 }
