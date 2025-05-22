@@ -384,10 +384,13 @@ const server = http.createServer(async (req, res) => {
               // Специальная обработка для инструмента search_users (Cursor ожидает параметр 'q')
               if (toolName === "search_users" && params.q && !params.query) {
                 log(
-                  `ℹ️ Преобразование параметра q -> query для инструмента search_users`
+                  `ℹ️ Преобразование параметра q -> query для инструмента search_users. q=${params.q}`
                 );
                 params.query = params.q;
                 delete params.q;
+                log(
+                  `ℹ️ Параметры после преобразования: ${JSON.stringify(params)}`
+                );
               }
 
               // Специальная обработка для инструментов без параметров
@@ -518,10 +521,13 @@ const server = http.createServer(async (req, res) => {
               // Специальная обработка для инструмента search_users (Cursor ожидает параметр 'q')
               if (toolName === "search_users" && params.q && !params.query) {
                 log(
-                  `ℹ️ Преобразование параметра q -> query для инструмента search_users`
+                  `ℹ️ Преобразование параметра q -> query для инструмента search_users. q=${params.q}`
                 );
                 params.query = params.q;
                 delete params.q;
+                log(
+                  `ℹ️ Параметры после преобразования: ${JSON.stringify(params)}`
+                );
               }
 
               // Специальная обработка для инструментов без параметров
