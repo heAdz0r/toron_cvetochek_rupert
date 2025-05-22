@@ -107,6 +107,82 @@ function sendJSONResponse(res, data) {
   res.end(JSON.stringify(data));
 }
 
+// Функция для форматирования результатов инструментов под MCP Cursor
+function formatMCPResult(toolName, result) {
+  // Обработка специальных случаев для разных инструментов
+  if (Array.isArray(result)) {
+    // Для инструментов, возвращающих массивы (list_pages, search_pages и т.д.)
+    return {
+      method: toolName,
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(result, null, 2),
+        },
+      ],
+      result: result,
+    };
+  } else if (toolName === "get_page" || toolName === "get_page_content") {
+    // Для get_page и get_page_content
+    return {
+      method: toolName,
+      content: [
+        {
+          type: "text",
+          text:
+            typeof result === "string"
+              ? result
+              : JSON.stringify(result, null, 2),
+        },
+      ],
+      result: result,
+    };
+  } else if (toolName === "list_users") {
+    // Специальная обработка для list_users, который вызывал ошибки
+    return {
+      method: toolName,
+      content: [
+        {
+          type: "text",
+          text: Array.isArray(result)
+            ? JSON.stringify(result, null, 2)
+            : JSON.stringify([], null, 2),
+        },
+      ],
+      // Обеспечиваем, что result всегда массив
+      result: Array.isArray(result) ? result : [],
+    };
+  } else if (toolName === "list_groups") {
+    // Специальная обработка для list_groups
+    return {
+      method: toolName,
+      content: [
+        {
+          type: "text",
+          text: Array.isArray(result)
+            ? JSON.stringify(result, null, 2)
+            : JSON.stringify([], null, 2),
+        },
+      ],
+      // Обеспечиваем, что result всегда массив
+      result: Array.isArray(result) ? result : [],
+    };
+  }
+
+  // Общий случай
+  return {
+    method: toolName,
+    content: [
+      {
+        type: "text",
+        text:
+          typeof result === "string" ? result : JSON.stringify(result, null, 2),
+      },
+    ],
+    result: result,
+  };
+}
+
 // Обработка запросов к MCP HTTP серверу
 const server = http.createServer(async (req, res) => {
   // Настройка CORS
@@ -293,19 +369,60 @@ const server = http.createServer(async (req, res) => {
                 error: error.message,
               });
             }
-          } else if (toolNames.includes(request.method)) {
-            // НОВАЯ ФУНКЦИОНАЛЬНОСТЬ: Прямой вызов инструмента по имени метода
-            const toolName = request.method;
-            const params = request.params || {};
+          } else if (request.method === "tools/call") {
+            // Обработка вызова инструмента через tools/call
+            const toolName = request.params.name;
+            const params = request.params.arguments || {};
 
             log(
-              `🔧 Прямой вызов инструмента: ${toolName} с параметрами: ${JSON.stringify(
+              `🔧 Выполнение инструмента через tools/call: ${toolName} с параметрами: ${JSON.stringify(
                 params
               )}`
             );
 
             try {
-              // Валидация параметров
+              // Специальная обработка для инструмента search_users (Cursor ожидает параметр 'q')
+              if (toolName === "search_users" && params.q && !params.query) {
+                log(
+                  `ℹ️ Преобразование параметра q -> query для инструмента search_users`
+                );
+                params.query = params.q;
+                delete params.q;
+              }
+
+              // Специальная обработка для инструментов без параметров
+              if (toolName === "list_users" || toolName === "list_groups") {
+                log(
+                  `ℹ️ Инструмент ${toolName} не требует параметров, игнорируем валидацию`
+                );
+
+                // Вызываем инструмент напрямую
+                const implementation = toolsMap[toolName];
+                if (!implementation) {
+                  throw new Error(
+                    `Реализация инструмента ${toolName} не найдена`
+                  );
+                }
+
+                const result = await implementation({});
+
+                // Форматируем результат под требования MCP
+                const formattedResult = formatMCPResult(toolName, result);
+
+                // Возвращаем результат
+                sendJSONResponse(res, {
+                  jsonrpc: "2.0",
+                  id: request.id,
+                  result: formattedResult,
+                });
+
+                log(
+                  `✅ Инструмент ${toolName} успешно выполнен через tools/call`
+                );
+                return;
+              }
+
+              // Валидация параметров для остальных инструментов
               const validationResult = safeValidateToolParams(toolName, params);
               if (!validationResult.success) {
                 log(
@@ -346,11 +463,153 @@ const server = http.createServer(async (req, res) => {
                 );
               }
 
+              // Форматируем результат под требования MCP
+              const formattedResult = formatMCPResult(toolName, result);
+
+              // Возвращаем результат в формате JSON-RPC
+              sendJSONResponse(res, {
+                jsonrpc: "2.0",
+                id: request.id,
+                result: formattedResult,
+              });
+
+              log(
+                `✅ Инструмент ${toolName} успешно выполнен через tools/call`
+              );
+
+              // Отправляем событие о выполнении инструмента
+              sendSSEEvent("tool_executed", {
+                tool: toolName,
+                status: "success",
+              });
+            } catch (error) {
+              log(
+                `❌ Ошибка при выполнении инструмента ${toolName} через tools/call: ${error.message}`
+              );
+
+              sendJSONResponse(res, {
+                jsonrpc: "2.0",
+                id: request.id,
+                error: {
+                  code: -32603,
+                  message: "Internal error",
+                  data: error.message,
+                },
+              });
+
+              // Отправляем событие об ошибке
+              sendSSEEvent("tool_error", {
+                tool: toolName,
+                error: error.message,
+              });
+            }
+          } else if (toolNames.includes(request.method)) {
+            // НОВАЯ ФУНКЦИОНАЛЬНОСТЬ: Прямой вызов инструмента по имени метода
+            const toolName = request.method;
+            const params = request.params || {};
+
+            log(
+              `🔧 Прямой вызов инструмента: ${toolName} с параметрами: ${JSON.stringify(
+                params
+              )}`
+            );
+
+            try {
+              // Специальная обработка для инструмента search_users (Cursor ожидает параметр 'q')
+              if (toolName === "search_users" && params.q && !params.query) {
+                log(
+                  `ℹ️ Преобразование параметра q -> query для инструмента search_users`
+                );
+                params.query = params.q;
+                delete params.q;
+              }
+
+              // Специальная обработка для инструментов без параметров
+              if (toolName === "list_users" || toolName === "list_groups") {
+                log(
+                  `ℹ️ Инструмент ${toolName} не требует параметров, игнорируем валидацию`
+                );
+
+                // Вызываем инструмент напрямую
+                const implementation = toolsMap[toolName];
+                if (!implementation) {
+                  throw new Error(
+                    `Реализация инструмента ${toolName} не найдена`
+                  );
+                }
+
+                const result = await implementation({});
+
+                // Форматируем результат под требования MCP
+                const formattedResult = formatMCPResult(toolName, result);
+
+                // Возвращаем результат
+                sendJSONResponse(res, {
+                  jsonrpc: "2.0",
+                  id: request.id,
+                  result: formattedResult,
+                });
+
+                log(`✅ Инструмент ${toolName} успешно выполнен`);
+
+                // Отправляем событие о выполнении инструмента
+                sendSSEEvent("tool_executed", {
+                  tool: toolName,
+                  status: "success",
+                });
+
+                return;
+              }
+
+              // Валидация параметров для остальных инструментов
+              const validationResult = safeValidateToolParams(toolName, params);
+              if (!validationResult.success) {
+                log(
+                  `❌ Ошибка валидации параметров для ${toolName}: ${JSON.stringify(
+                    validationResult.error.format()
+                  )}`
+                );
+
+                sendJSONResponse(res, {
+                  jsonrpc: "2.0",
+                  id: request.id,
+                  error: {
+                    code: -32602,
+                    message: "Invalid params",
+                    data: validationResult.error.format(),
+                  },
+                });
+                return;
+              }
+
+              // Вызываем инструмент
+              const implementation = toolsMap[toolName];
+              if (!implementation) {
+                throw new Error(
+                  `Реализация инструмента ${toolName} не найдена`
+                );
+              }
+
+              const result = await implementation(validationResult.data);
+
+              // Валидируем результат
+              const resultValidation = safeValidateToolResult(toolName, result);
+              if (!resultValidation.success) {
+                log(
+                  `⚠️ Предупреждение: результат инструмента ${toolName} не соответствует схеме: ${JSON.stringify(
+                    resultValidation.error
+                  )}`
+                );
+              }
+
+              // Форматируем результат под требования MCP для прямых вызовов
+              const formattedResult = formatMCPResult(toolName, result);
+
               // Возвращаем результат в стандартном формате JSON-RPC
               sendJSONResponse(res, {
                 jsonrpc: "2.0",
                 id: request.id,
-                result: result,
+                result: formattedResult,
               });
 
               log(`✅ Инструмент ${toolName} успешно выполнен`);

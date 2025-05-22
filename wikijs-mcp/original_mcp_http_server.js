@@ -3,7 +3,6 @@
 /**
  * HTTP-сервер MCP для интеграции Wiki.js с Cursor
  * Использует Model Context Protocol для предоставления инструментов работы с Wiki.js
- * Исправленная версия с поддержкой прямых вызовов инструментов через JSON-RPC
  */
 
 import http from "http";
@@ -35,7 +34,7 @@ const WIKIJS_TOKEN = process.env.WIKIJS_TOKEN || "";
 const API_URL = `${WIKIJS_BASE_URL}/graphql`;
 
 // Создаем лог-файл сервера
-const logFile = fs.createWriteStream(path.join(__dirname, "fixed_server.log"), {
+const logFile = fs.createWriteStream(path.join(__dirname, "server.log"), {
   flags: "a",
 });
 
@@ -202,7 +201,7 @@ const server = http.createServer(async (req, res) => {
               request.params.arguments || request.params.params || {};
 
             log(
-              `🔧 Выполнение инструмента через executeCommand: ${toolName} с параметрами: ${JSON.stringify(
+              `🔧 Выполнение инструмента: ${toolName} с параметрами: ${JSON.stringify(
                 params
               )}`
             );
@@ -293,94 +292,6 @@ const server = http.createServer(async (req, res) => {
                 error: error.message,
               });
             }
-          } else if (toolNames.includes(request.method)) {
-            // НОВАЯ ФУНКЦИОНАЛЬНОСТЬ: Прямой вызов инструмента по имени метода
-            const toolName = request.method;
-            const params = request.params || {};
-
-            log(
-              `🔧 Прямой вызов инструмента: ${toolName} с параметрами: ${JSON.stringify(
-                params
-              )}`
-            );
-
-            try {
-              // Валидация параметров
-              const validationResult = safeValidateToolParams(toolName, params);
-              if (!validationResult.success) {
-                log(
-                  `❌ Ошибка валидации параметров для ${toolName}: ${JSON.stringify(
-                    validationResult.error.format()
-                  )}`
-                );
-
-                sendJSONResponse(res, {
-                  jsonrpc: "2.0",
-                  id: request.id,
-                  error: {
-                    code: -32602,
-                    message: "Invalid params",
-                    data: validationResult.error.format(),
-                  },
-                });
-                return;
-              }
-
-              // Вызываем инструмент
-              const implementation = toolsMap[toolName];
-              if (!implementation) {
-                throw new Error(
-                  `Реализация инструмента ${toolName} не найдена`
-                );
-              }
-
-              const result = await implementation(validationResult.data);
-
-              // Валидируем результат
-              const resultValidation = safeValidateToolResult(toolName, result);
-              if (!resultValidation.success) {
-                log(
-                  `⚠️ Предупреждение: результат инструмента ${toolName} не соответствует схеме: ${JSON.stringify(
-                    resultValidation.error
-                  )}`
-                );
-              }
-
-              // Возвращаем результат в стандартном формате JSON-RPC
-              sendJSONResponse(res, {
-                jsonrpc: "2.0",
-                id: request.id,
-                result: result,
-              });
-
-              log(`✅ Инструмент ${toolName} успешно выполнен`);
-
-              // Отправляем событие о выполнении инструмента
-              sendSSEEvent("tool_executed", {
-                tool: toolName,
-                status: "success",
-              });
-            } catch (error) {
-              log(
-                `❌ Ошибка при выполнении инструмента ${toolName}: ${error.message}`
-              );
-
-              sendJSONResponse(res, {
-                jsonrpc: "2.0",
-                id: request.id,
-                error: {
-                  code: -32603,
-                  message: "Internal error",
-                  data: error.message,
-                },
-              });
-
-              // Отправляем событие об ошибке
-              sendSSEEvent("tool_error", {
-                tool: toolName,
-                error: error.message,
-              });
-            }
           } else {
             // Неизвестный метод
             sendJSONResponse(res, {
@@ -396,20 +307,15 @@ const server = http.createServer(async (req, res) => {
           // Обработка нестандартных запросов
           sendJSONResponse(res, {
             error: {
-              code: -32600,
-              message: "Invalid Request",
+              message: "Invalid request format, expected JSON-RPC 2.0",
             },
           });
         }
       } catch (error) {
         log(`❌ Ошибка обработки JSON-RPC запроса: ${error.message}`);
         sendJSONResponse(res, {
-          jsonrpc: "2.0",
-          id: null,
           error: {
-            code: -32700,
-            message: "Parse error",
-            data: error.message,
+            message: `Error processing request: ${error.message}`,
           },
         });
       }
@@ -417,56 +323,66 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Обработка SSE-соединений для событий MCP
-  if (pathname === "/mcp/events") {
+  // Обработка SSE для событий MCP
+  if (pathname === "/mcp/events" && req.method === "GET") {
+    log(`📡 Установка SSE соединения для событий MCP`);
+
+    // Настройка соединения SSE
     res.writeHead(200, {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
     });
 
-    // Отправляем начальное сообщение
+    // Отправка начального сообщения
     res.write("event: connected\ndata: {}\n\n");
 
-    // Добавляем клиента в список
+    // Добавление клиента в список активных
     sseClients.add(res);
 
-    // Обрабатываем закрытие соединения
+    // Обработка закрытия соединения
     req.on("close", () => {
       sseClients.delete(res);
-      log(`📤 SSE клиент отключен, активных клиентов: ${sseClients.size}`);
+      log(`📴 SSE клиент отключился`);
     });
 
-    log(`📥 Новое SSE-соединение, активных клиентов: ${sseClients.size}`);
     return;
   }
 
-  // Обработка запроса проверки здоровья сервера
+  // Проверка состояния сервера
   if (pathname === "/health") {
     const isApiAccessible = await checkApiAccess();
-    sendJSONResponse(res, {
-      status: isApiAccessible ? "ok" : "error",
-      message: isApiAccessible
-        ? "MCP Server is running and connected to Wiki.js"
-        : "MCP Server is running but Wiki.js API is not accessible",
-    });
+    const status = isApiAccessible ? "ok" : "error";
+    const message = isApiAccessible
+      ? "MCP Server is running and connected to Wiki.js"
+      : "MCP Server is running but cannot connect to Wiki.js API";
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        status,
+        message,
+      })
+    );
     return;
   }
 
-  // Обработка запроса к корню
-  if (pathname === "/") {
-    sendJSONResponse(res, {
-      status: "ok",
-      message: "Wiki.js MCP Server is running",
-      version: "1.0.0",
-      endpoints: {
-        "/health": "Проверка состояния сервера",
-        "/tools": "Список доступных инструментов",
-        "/mcp": "MCP JSON-RPC endpoint для Cursor",
-        "/mcp/events": "SSE endpoint для событий MCP",
-        "/{tool_name}": "Прямой вызов инструмента по имени",
-      },
-    });
+  // Если запрос к корню, возвращаем информацию о сервере
+  if (pathname === "/" || pathname === "") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        name: "WikiJs MCP HTTP Server",
+        version: "1.0.0",
+        endpoints: {
+          "/health": "Проверка состояния сервера",
+          "/tools": "Список доступных инструментов",
+          "/mcp": "MCP JSON-RPC endpoint для Cursor",
+          "/mcp/events": "SSE endpoint для событий MCP",
+          "/{tool_name}": "Прямой вызов инструмента по имени",
+        },
+      })
+    );
     return;
   }
 

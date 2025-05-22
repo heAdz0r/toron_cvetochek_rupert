@@ -9,7 +9,7 @@ import fetch from "node-fetch";
 import readline from "readline";
 
 // Настройки
-const SERVER_URL = process.env.MCP_SERVER_URL || "http://localhost:8000";
+const SERVER_URL = process.env.MCP_SERVER_URL || "http://localhost:3200";
 let tools = [];
 
 console.log(

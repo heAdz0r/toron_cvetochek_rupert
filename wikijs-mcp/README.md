@@ -68,6 +68,24 @@ npm run server:stdio
 npm run dev
 ```
 
+## Исправленная версия MCP-сервера
+
+Этот проект содержит MCP-сервер с поддержкой прямых вызовов инструментов через JSON-RPC. Мы решили проблему, когда клиенты MCP (например, Cursor) не могли напрямую вызывать методы инструментов.
+
+Подробная информация об исправлении и его применении доступна в файле [MCP_FIX_DOCUMENTATION.md](./MCP_FIX_DOCUMENTATION.md).
+
+Основные преимущества:
+
+- Полная совместимость с протоколом JSON-RPC 2.0
+- Поддержка прямых вызовов инструментов (например, `search_pages`)
+- Улучшенное логирование для отладки
+
+Для запуска сервера используйте скрипт:
+
+```bash
+./start_http.sh
+```
+
 ## Использование с Cursor (MCP клиент)
 
 Для интеграции с Cursor создайте файл `.cursor/mcp.json` в вашем проекте:
@@ -94,10 +112,10 @@ npm run dev
   "mcpServers": {
     "wikijs": {
       "command": "node",
-      "args": ["dist/server.js"],
+      "args": ["fixed_mcp_http_server.js"],
       "cwd": "/path/to/wikijs-mcp",
       "env": {
-        "PORT": "8000",
+        "PORT": "3200",
         "WIKIJS_BASE_URL": "http://your-wikijs-url",
         "WIKIJS_TOKEN": "your-wikijs-api-token"
       }
